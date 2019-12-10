@@ -11,27 +11,49 @@ type termSig struct {
 	err    error
 }
 
-var paramCounts = map[int64]int64{
-	1:  3,
-	2:  3,
-	3:  1,
-	4:  1,
-	5:  2,
-	6:  2,
-	7:  3,
-	8:  3,
-	99: 0,
+type optcode int64
+type paramMode int64
+
+const (
+	optcodeAdd       optcode = 1
+	optcodeMul       optcode = 2
+	optcodeInput     optcode = 3
+	optcodeOutput    optcode = 4
+	optcodeJumpTrue  optcode = 5
+	optcodeJumpFalse optcode = 6
+	optcodeLessThan  optcode = 7
+	optcodeEqual     optcode = 8
+	optcodeRelative  optcode = 9
+	optcodeTerm      optcode = 99
+
+	paramPosition  paramMode = 0
+	paramImmediate paramMode = 1
+	paramRelative  paramMode = 2
+)
+
+var paramCounts = map[optcode]int64{
+	optcodeAdd:       3,
+	optcodeMul:       3,
+	optcodeInput:     1,
+	optcodeOutput:    1,
+	optcodeJumpTrue:  2,
+	optcodeJumpFalse: 2,
+	optcodeLessThan:  3,
+	optcodeEqual:     3,
+	optcodeRelative:  1,
+	optcodeTerm:      0,
 }
-var writeParams = map[int64]int64{
-	1: 2,
-	2: 2,
-	3: 0,
-	7: 2,
-	8: 2,
+var writeParams = map[optcode]int64{
+	optcodeAdd:      2,
+	optcodeMul:      2,
+	optcodeInput:    0,
+	optcodeLessThan: 2,
+	optcodeEqual:    2,
 }
 
 func runIntcode(prog []int64, id int64, input, output chan int64, term chan termSig) {
 	var ptr int64
+	var relAddr int64
 	var lastOutput int64
 	var err error
 
@@ -48,89 +70,96 @@ func runIntcode(prog []int64, id int64, input, output chan int64, term chan term
 			break
 		}
 
-		if opt == 99 {
+		if opt == optcodeTerm {
+			// fmt.Printf("ptr=%d line=%v opt=%d\n", ptr, prog[ptr:ptr+count+1], opt)
 			break
 		}
 
 		params := make([]int64, count)
 		var i int64
 		for i = 0; i < count; i++ {
-			var pm int64
+			var pm paramMode
 			if i < int64(len(pms)) {
 				pm = pms[i]
 			}
 
-			writeParam, ok := writeParams[opt]
-			val := prog[ptr+i+1]
-			if pm == 0 && !(ok && writeParam == i) {
-				val = prog[val]
+			writeIdx, ok := writeParams[opt]
+			var val int64
+			param := prog[ptr+i+1]
+
+			if ok && i == writeIdx {
+				if pm == paramRelative {
+					val = relAddr + param
+				} else {
+					val = param
+				}
+			} else {
+				if pm == paramPosition {
+					val = prog[param]
+				} else if pm == paramImmediate {
+					val = param
+				} else {
+					val = prog[relAddr+param]
+				}
 			}
 			params[i] = val
 		}
 
 		// fmt.Printf("ptr=%d line=%v opt=%d params=%v pms=%v\n", ptr, prog[ptr:ptr+count+1], opt, params, pms)
 
-		if opt == 1 {
+		if opt == optcodeAdd {
 			writePtr := params[2]
 			val := params[0] + params[1]
-			if writePtr >= int64(len(prog)) {
-				err = fmt.Errorf("address %d out of range, ptr=%d line=%v opt=%d params=%v pms=%v", writePtr, ptr, prog[ptr:ptr+count+1], opt, params, pms)
+			if err := writeVal(prog, writePtr, val); err != nil {
 				break
 			}
-			prog[writePtr] = val
-		} else if opt == 2 {
+		} else if opt == optcodeMul {
 			writePtr := params[2]
 			val := params[0] * params[1]
-			if writePtr >= int64(len(prog)) {
-				err = fmt.Errorf("address %d out of range, ptr=%d line=%v opt=%d params=%v pms=%v", writePtr, ptr, prog[ptr:ptr+count+1], opt, params, pms)
+			if err := writeVal(prog, writePtr, val); err != nil {
 				break
 			}
-			prog[writePtr] = val
-		} else if opt == 3 {
+		} else if opt == optcodeInput {
 			writePtr := params[0]
-			if writePtr >= int64(len(prog)) {
-				err = fmt.Errorf("address %d out of range, ptr=%d line=%v opt=%d params=%v pms=%v", writePtr, ptr, prog[ptr:ptr+count+1], opt, params, pms)
+			// fmt.Printf("%d input\n", id)
+			val := <-input
+			if err := writeVal(prog, writePtr, val); err != nil {
 				break
 			}
-			fmt.Printf("%d input\n", id)
-			in := <-input
-			prog[writePtr] = in
-		} else if opt == 4 {
+		} else if opt == optcodeOutput {
 			lastOutput = params[0]
-			fmt.Printf("%d output %d\n", id, lastOutput)
+			// fmt.Printf("%d output %d\n", id, lastOutput)
 			output <- lastOutput
-		} else if opt == 5 {
+		} else if opt == optcodeJumpTrue {
 			if params[0] != 0 {
 				ptr = params[1]
 				jump = true
 			}
-		} else if opt == 6 {
+		} else if opt == optcodeJumpFalse {
 			if params[0] == 0 {
 				ptr = params[1]
 				jump = true
 			}
-		} else if opt == 7 {
+		} else if opt == optcodeLessThan {
 			var val int64
 			if params[0] < params[1] {
 				val = 1
 			}
 			writePtr := params[2]
-			if writePtr >= int64(len(prog)) {
-				err = fmt.Errorf("address %d out of range, ptr=%d line=%v opt=%d params=%v pms=%v", writePtr, ptr, prog[ptr:ptr+count+1], opt, params, pms)
+			if err := writeVal(prog, writePtr, val); err != nil {
 				break
 			}
-			prog[writePtr] = val
-		} else if opt == 8 {
+		} else if opt == optcodeEqual {
 			var val int64
 			if params[0] == params[1] {
 				val = 1
 			}
 			writePtr := params[2]
-			if writePtr >= int64(len(prog)) {
-				err = fmt.Errorf("address %d out of range, ptr=%d line=%v opt=%d params=%v pms=%v", writePtr, ptr, prog[ptr:ptr+count+1], opt, params, pms)
+			if err := writeVal(prog, writePtr, val); err != nil {
 				break
 			}
-			prog[writePtr] = val
+		} else if opt == optcodeRelative {
+			relAddr += params[0]
 		}
 
 		if !jump {
@@ -141,7 +170,15 @@ func runIntcode(prog []int64, id int64, input, output chan int64, term chan term
 	term <- termSig{id: id, output: lastOutput, err: err}
 }
 
-func parseOptcode(inst int64) (int64, []int64) {
+func writeVal(prog []int64, ptr, val int64) error {
+	if ptr < 0 || ptr >= int64(len(prog)) {
+		return fmt.Errorf("address %d out of range", ptr)
+	}
+	prog[ptr] = val
+	return nil
+}
+
+func parseOptcode(inst int64) (optcode, []paramMode) {
 	is := strconv.FormatInt(inst, 10)
 
 	opts := ""
@@ -152,15 +189,17 @@ func parseOptcode(inst int64) (int64, []int64) {
 	}
 	opt, _ := strconv.ParseInt(opts, 10, 64)
 
-	pms := make([]int64, 0)
+	pms := make([]paramMode, 0)
 	for i := len(is) - 3; i >= 0; i-- {
 		p, _ := strconv.ParseInt(string(is[i]), 10, 64)
-		pms = append(pms, p)
+		pms = append(pms, paramMode(p))
 	}
 
-	return opt, pms
+	return optcode(opt), pms
 }
 
 func parseProg(input string) []int64 {
-	return parseInputInts(input, ",")
+	prog := parseInputInts(input, ",")
+	prog = append(prog, make([]int64, len(prog)*10)...)
+	return prog
 }
