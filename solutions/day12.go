@@ -1,149 +1,122 @@
 package solutions
 
 import (
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
 )
 
-type moon12 struct {
-	pos Point3D
-	vel Point3D
-}
-
 type match12 struct {
-	id   int
-	step int64
+	id    int
+	start int64
+	stop  int64
 }
 
 // Day12 ...
 func Day12(input string) {
-	poses := parse12(input)
-	moons := make([]moon12, len(poses))
-	for i, pos := range poses {
-		moons[i] = moon12{pos: pos}
+	posX, posY, posZ := parse12(input)
+	matches := make(chan match12, 100)
+	perms := [][]int{
+		[]int{0, 1},
+		[]int{0, 2},
+		[]int{0, 3},
+		[]int{1, 2},
+		[]int{1, 3},
+		[]int{2, 3},
 	}
 
-	perms := [][]moon12{
-		[]moon12{
-			moons[0],
-			moons[1],
-		},
-		[]moon12{
-			moons[0],
-			moons[2],
-		},
-		[]moon12{
-			moons[0],
-			moons[3],
-		},
-		[]moon12{
-			moons[1],
-			moons[2],
-		},
-		[]moon12{
-			moons[1],
-			moons[3],
-		},
-		[]moon12{
-			moons[2],
-			moons[3],
-		},
+	go findLoop12(0, posX, perms, matches)
+	go findLoop12(1, posY, perms, matches)
+	go findLoop12(2, posZ, perms, matches)
+
+	stops := make([]int64, 0)
+	for {
+		m := <-matches
+		stops = append(stops, m.stop)
+		if len(stops) == 3 {
+			break
+		}
 	}
 
-	matches := make(chan match12, 10)
-
-	go loop12(0, moons, perms, matches)
-	go loop12(1, moons, perms, matches)
-	go loop12(2, moons, perms, matches)
+	fmt.Println(LCM(stops[0], stops[1], stops[2]))
 }
 
-func parse12(input string) []Point3D {
+func parse12(input string) ([]int64, []int64, []int64) {
 	re := regexp.MustCompile(`<x=(-?\d+), y=(-?\d+), z=(-?\d+)>`)
 	lines := strings.Split(input, "\n")
-	moons := make([]Point3D, len(lines))
+	posX := make([]int64, len(lines))
+	posY := make([]int64, len(lines))
+	posZ := make([]int64, len(lines))
 
 	for i, line := range lines {
 		pos := re.FindStringSubmatch(line)[1:]
 		x, _ := strconv.ParseInt(pos[0], 10, 64)
 		y, _ := strconv.ParseInt(pos[1], 10, 64)
 		z, _ := strconv.ParseInt(pos[2], 10, 64)
-		moons[i] = Point3D{int(x), int(y), int(z)}
+		posX[i] = x
+		posY[i] = y
+		posZ[i] = z
 	}
 
-	return moons
+	return posX, posY, posZ
 }
 
-func loop12(id int, moons []moon12, perms [][]moon12, matches chan match12) {
-	history := make(map[int]bool)
-	history[sum12(moons, id)] = true
+func findLoop12(id int, points []int64, perms [][]int, matches chan match12) {
+	vels := make([]int64, len(points))
+
+	history := make(map[string]int64)
+	history[key12(points, vels)] = 0
 
 	var step int64
-	for step = 0; ; step++ {
+	for step = 1; ; step++ {
 		for _, pair := range perms {
-			r1 := pair[0]
-			r2 := pair[1]
+			i1 := pair[0]
+			i2 := pair[1]
+			p1 := points[i1]
+			p2 := points[i2]
 
-			switch id {
-			case 0:
-				if r1.pos.x > r2.pos.x {
-					r1.vel.x--
-					r2.vel.x++
-				} else if r1.pos.x < r2.pos.x {
-					r1.vel.x++
-					r2.vel.x--
-				}
-			case 1:
-				if r1.pos.y > r2.pos.y {
-					r1.vel.y--
-					r2.vel.y++
-				} else if r1.pos.y < r2.pos.y {
-					r1.vel.y++
-					r2.vel.y--
-				}
-			case 2:
-				if r1.pos.z > r2.pos.z {
-					r1.vel.z--
-					r2.vel.z++
-				} else if r1.pos.z < r2.pos.z {
-					r1.vel.z++
-					r2.vel.z--
-				}
+			if p1 > p2 {
+				vels[i1]--
+				vels[i2]++
+			} else if p1 < p2 {
+				vels[i1]++
+				vels[i2]--
 			}
 		}
 
-		for _, m := range moons {
-			switch id {
-			case 0:
-				m.pos.x += m.vel.x
-			case 1:
-				m.pos.y += m.vel.y
-			case 2:
-				m.pos.z += m.vel.z
-			}
+		for i := range points {
+			points[i] += vels[i]
 		}
 
-		s := sum12(moons, id)
-		if _, ok := history[s]; ok {
-			matches <- match12{id, step + 1}
+		s := key12(points, vels)
+		if start, ok := history[s]; ok {
+			matches <- match12{id, start, step}
+			break
 		} else {
-			history[s] = true
+			history[s] = step
 		}
 	}
 }
 
-func sum12(moons []moon12, id int) int {
-	total := 0
-	for _, m := range moons {
-		switch id {
-		case 0:
-			total += m.pos.x
-		case 1:
-			total += m.pos.y
-		case 2:
-			total += m.pos.z
+func key12(pos []int64, vel []int64) string {
+	return fmt.Sprintf("%d:%d:%d:%d:%d:%d:%d:%d", pos[0], pos[1], pos[2], pos[3], vel[0], vel[1], vel[2], vel[3])
+}
+
+func hasMatch(steps [][]int64) bool {
+	for _, x := range steps[0] {
+		for _, y := range steps[0] {
+			if x != y {
+				continue
+			}
+
+			for _, z := range steps[0] {
+				if x == y && y == z {
+					return true
+				}
+			}
 		}
 	}
 
-	return total
+	return false
 }
