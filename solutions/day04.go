@@ -7,13 +7,13 @@ import (
 
 // Day04 ...
 func Day04(input string) {
-	inputs04 := parseInputInts(input, "-")
+	inputs04 := ParseInputInts(input, "-")
 	min := inputs04[0]
 	max := inputs04[1]
 
 	numPassed := 0
 	for n := min; n <= max; n++ {
-		if valid(n) {
+		if valid04(n) {
 			numPassed++
 		}
 	}
@@ -21,13 +21,13 @@ func Day04(input string) {
 	fmt.Println(numPassed)
 }
 
-func valid(pass int64) bool {
+func valid04(pass int64) bool {
 	digits := 6
 	last := -1
 	streaks := make([]int, 0)
 	curStreak := 1
 	for p := 0; p < digits; p++ {
-		d := digit(pass, p)
+		d := digit04(pass, p)
 		if d < last {
 			return false
 		}
@@ -48,7 +48,7 @@ func valid(pass int64) bool {
 	return false
 }
 
-func digit(num int64, place int) int {
+func digit04(num int64, place int) int {
 	ds := string(strconv.FormatInt(int64(num), 10)[place])
 	d, _ := strconv.ParseInt(ds, 10, 64)
 	return int(d)

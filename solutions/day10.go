@@ -10,9 +10,9 @@ import (
 // Day10 ...
 func Day10(input string) {
 	rocks := parse10(input)
-	rock := point{11, 11}
-	angles := make(map[point][]point)
-	keys := make([]point, 0)
+	rock := Point{11, 11}
+	angles := make(map[Point][]Point)
+	keys := make([]Point, 0)
 
 	for _, other := range rocks {
 		if other == rock {
@@ -25,11 +25,11 @@ func Day10(input string) {
 		dx /= gcd
 		dy /= gcd
 
-		a := point{dx, dy}
+		a := Point{dx, dy}
 
 		group, ok := angles[a]
 		if !ok {
-			group = make([]point, 0)
+			group = make([]Point, 0)
 			keys = append(keys, a)
 		}
 		group = append(group, other)
@@ -44,7 +44,7 @@ func Day10(input string) {
 	})
 
 	count := 0
-	last := point{}
+	last := Point{}
 
 	for count < 200 {
 		for _, k := range keys {
@@ -65,15 +65,15 @@ func Day10(input string) {
 	fmt.Println(last)
 }
 
-func parse10(input string) []point {
+func parse10(input string) []Point {
 	lines := strings.Split(input, "\n")
-	rocks := make([]point, 0)
+	rocks := make([]Point, 0)
 
 	for y, line := range lines {
 		points := strings.Split(line, "")
 		for x, p := range points {
 			if p == "#" {
-				rocks = append(rocks, point{x, y})
+				rocks = append(rocks, Point{x, y})
 			}
 		}
 	}
@@ -91,11 +91,11 @@ func gcd10(a, b int) int {
 	return a
 }
 
-func angle10(p point) float64 {
+func angle10(p Point) float64 {
 	return math.Atan2(float64(p.x), float64(p.y))
 }
 
-func magnitude10(p point) int {
+func magnitude10(p Point) int {
 	return intAbs10(p.x) + intAbs10(p.y)
 }
 

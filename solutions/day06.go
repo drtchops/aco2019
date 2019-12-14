@@ -5,20 +5,20 @@ import (
 	"strings"
 )
 
-type planet struct {
+type planet06 struct {
 	name     string
 	parent   string
 	children []string
 }
 
-type step struct {
+type step06 struct {
 	name  string
 	steps int
 }
 
 // Day06 ...
 func Day06(input string) {
-	planets := make(map[string]planet)
+	planets := make(map[string]planet06)
 
 	for _, orbit := range strings.Split(input, "\n") {
 		parts := strings.Split(orbit, ")")
@@ -29,7 +29,7 @@ func Day06(input string) {
 			p.children = append(p.children, child)
 			planets[parent] = p
 		} else {
-			p = planet{
+			p = planet06{
 				name:     parent,
 				children: []string{child},
 			}
@@ -40,7 +40,7 @@ func Day06(input string) {
 			p.parent = parent
 			planets[child] = p
 		} else {
-			p = planet{
+			p = planet06{
 				name:   child,
 				parent: parent,
 			}
@@ -49,15 +49,15 @@ func Day06(input string) {
 	}
 
 	visited := make(map[string]bool)
-	next := make([]step, 0)
+	next := make([]step06, 0)
 
 	me := planets["YOU"]
 	start := planets[me.parent]
 	if start.parent != "" {
-		next = append(next, step{name: start.parent})
+		next = append(next, step06{name: start.parent})
 	}
 	for _, c := range start.children {
-		next = append(next, step{name: c})
+		next = append(next, step06{name: c})
 	}
 
 	for len(next) > 0 {
@@ -71,11 +71,11 @@ func Day06(input string) {
 
 		p := planets[s.name]
 		if p.parent != "" && !visited[p.parent] {
-			next = append(next, step{steps: s.steps + 1, name: p.parent})
+			next = append(next, step06{steps: s.steps + 1, name: p.parent})
 		}
 		for _, c := range p.children {
 			if !visited[c] {
-				next = append(next, step{steps: s.steps + 1, name: c})
+				next = append(next, step06{steps: s.steps + 1, name: c})
 			}
 		}
 		next = next[1:]

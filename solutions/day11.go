@@ -11,8 +11,8 @@ func Day11(input string) {
 
 	go runIntcode(prog, 0, in, out, term)
 
-	colors := make(map[point]bool)
-	pos := point{0, 0}
+	colors := make(map[Point]bool)
+	pos := Point{0, 0}
 	colors[pos] = true
 	dir := "up"
 	minX := 0
@@ -104,7 +104,7 @@ func Day11(input string) {
 	for y := maxY; y >= minY; y-- {
 		for x := minX; x <= maxX; x++ {
 			tile := " "
-			c, ok := colors[point{x, y}]
+			c, ok := colors[Point{x, y}]
 			if ok && c {
 				tile = "X"
 			}

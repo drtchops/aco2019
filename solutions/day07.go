@@ -12,7 +12,7 @@ func Day07(input string) {
 	var best int64
 	inputs07 := parseProg(input)
 
-	for _, phases := range permutations(phaseSettings) {
+	for _, phases := range Permutations(phaseSettings) {
 		fmt.Println(phases)
 		term := make(chan termSig, numProgs)
 		inputs := make([]chan int64, numProgs)

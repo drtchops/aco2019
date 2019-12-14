@@ -199,7 +199,7 @@ func parseOptcode(inst int64) (optcode, []paramMode) {
 }
 
 func parseProg(input string) []int64 {
-	prog := parseInputInts(input, ",")
+	prog := ParseInputInts(input, ",")
 	prog = append(prog, make([]int64, len(prog)*10)...)
 	return prog
 }

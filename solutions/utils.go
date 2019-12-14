@@ -5,7 +5,34 @@ import (
 	"strings"
 )
 
-func permutations(arr []int64) [][]int64 {
+// Point ...
+type Point struct {
+	x int
+	y int
+}
+
+// Point3D ...
+type Point3D struct {
+	x int
+	y int
+	z int
+}
+
+// Point64 ...
+type Point64 struct {
+	x int64
+	y int64
+}
+
+// Point3D64 ...
+type Point3D64 struct {
+	x int64
+	y int64
+	z int64
+}
+
+// Permutations ...
+func Permutations(arr []int64) [][]int64 {
 	var helper func([]int64, int64)
 	res := [][]int64{}
 
@@ -34,7 +61,8 @@ func permutations(arr []int64) [][]int64 {
 	return res
 }
 
-func parseInputInts(input, sep string) []int64 {
+// ParseInputInts ...
+func ParseInputInts(input, sep string) []int64 {
 	lines := strings.Split(input, sep)
 	parsed := make([]int64, len(lines))
 	for i, line := range lines {
